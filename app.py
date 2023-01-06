@@ -31,10 +31,14 @@ def read_file(bucket_name, file_path):
 
 bucket_name = "streamlit-bucket-nyamnyam"
 file_path = "all_data.pkl"
-
+print("dasdasd")
 content = read_file(bucket_name, file_path)
 
-print(type(content))
+
+# Print results.
+for line in content.strip().split("\n"):
+    name, pet = line.split(",")
+    st.write(f"{name} has a :{pet}:")
 
 # # load
 # with open('data.pickle', 'rb') as f:
