@@ -8,6 +8,7 @@ from main import getLocation, getNearRestaurant
 from streamlit.components.v1 import html
 from urllib import parse
 from streamlit_javascript import st_javascript
+import random
 
 #TODO streamlit viewport 문제 mobile responsive
 
@@ -16,8 +17,29 @@ MAX_VECTORS = 8
 
 
 st.set_page_config(
-    page_title="모든 맛집이 내 손안에! 냠냠"
+    page_title="모든 맛집이 내 손안에! 냠냠",
+    layout="centered"
   )
+
+# 주변거리 함수
+def distance_to_text(distance):
+    if distance<500:
+        distance_text = "500M 이내"
+    elif distance<1500:
+        distance_text = "1.5KM 이내"
+    elif distance<3000:
+        distance_text = "3KM 이내"
+    elif distance<5000:
+        distance_text = "5KM 이내"
+    elif distance<10000:
+        distance_text = "10KM 이내"
+    elif distance<15000:
+        distance_text = "15KM 이내"
+    else:
+        distance_text = "15KM 초과"
+    
+    return distance_text
+
 
 #===========================================sytle 영역
 
@@ -36,7 +58,7 @@ m = st.markdown("""
         background-color: rgb(239, 198, 56);
         color: black;
         font-size;50%;
-        font-weight: 900;
+        font-weight: bold;
 
     }
     div.stButton > button:first-child {
@@ -100,144 +122,240 @@ st.markdown(
 
 #===============================================
 # session 값 초기화
+# vector list
 if 'selected_list' not in st.session_state:
     st.session_state['selected_list'] = []
+    
+if 'selected_restraunt' not in st.session_state:
+    st.session_state['selected_restraunt'] = []
 # 위치 값 가져오기
 curr_location = getLocation()
 
+# selected_list session 불러오기
+selected_list = st.session_state['selected_list'][:10]
+st.session_state['selected_list'] = selected_list
+# selected_restraunt session 불러오기
+selected_restraunt = st.session_state['selected_restraunt'][:3]
+st.session_state['selected_restraunt'] = selected_restraunt
 
+with st.container():
 
-# 검색범위 슬라이더
-st.subheader("검색 범위")
-radius = st.slider("radius_slider",min_value=1000,max_value=50000,value=1500,label_visibility="hidden")
-st.markdown("---")
-
-# 데이터 불러오기
-all_data = pd.read_csv("all_data.csv")
-all_data = getNearRestaurant(all_data,curr_location['latitude'], curr_location['longitude'],radius)
-
-# 내 주변 맛집 주요키워드 출력
-keyword_list = []
-for idx in range(len(all_data['comment'])):
-    for vector in literal_eval(all_data['comment'].iloc[idx])[:2]:
-        keyword_list.append(vector)
-keyword_list = sorted(list(set(keyword_list)))
-
-st.subheader("주변 맛집 주요 키워드")
-
-
-selected_list = st.session_state["selected_list"]
-
-col1,col2,col3,col4 =st.columns(4)
-for idx, keyword in enumerate(keyword_list):
-    keyword = "  "+keyword+"  "
-    keyword = keyword[:10]
-    if idx%4 == 0:
-        if col1.button(f'{keyword}'):
-            selected_list.append(keyword)
-            selected_list = list(set(selected_list))
-    elif idx%4 == 1:
-        if col2.button(f'{keyword}'):
-            selected_list.append(keyword)
-            selected_list = list(set(selected_list))
-    elif idx%4 == 2:
-        if col3.button(f'{keyword}'):
-            selected_list.append(keyword)
-            selected_list = list(set(selected_list))
-    elif idx%4 == 3:
-        if col4.button(f'{keyword}'):
-            selected_list.append(keyword)
-            selected_list = list(set(selected_list))
-
-
-        
-
-
-st.markdown("---")
-
-html = """
-<h2 >
-내 주변 맛집
-</h2>
-"""
-st.markdown(html, unsafe_allow_html=True)
-
-
-
-for id, idx in enumerate(range(len(all_data))):
-    name = all_data['name'].iloc[idx]
-    road_address = all_data['road_address'].iloc[idx]
-    distance = all_data['distance'].iloc[idx]
-    img = all_data['img_url'].iloc[idx]
-    comment = all_data['comment'].iloc[idx]
-    st.markdown("---")
-    cola, colb = st.columns(2)   
-    name_html = f"""
-    <h2 style=text-align:center;>
-    {name}
-    </h2>
-    
+    nyamnyam_html = """
+    <h1 style=text-align:center; >
+    세상의 모든 맛집! Nyam-Nyam! 
+    </h1>
     """
-    
-    cola.markdown(name_html, unsafe_allow_html=True)
-    colb.subheader(road_address)
-    colb.subheader(f"{distance}m")
-    st.image(img)
-    col1_add,col2_add,col3_add,col4_add =st.columns(4)
-    for idx,keyword in enumerate(literal_eval(comment)[:4]):
-        # 버튼 고유값 생성(중복시 오류)
-        button_keyword = "  "+keyword+"  "+" "*(id+1)
+    st.markdown(nyamnyam_html, unsafe_allow_html=True)
 
+    st.markdown("---")
+
+    # 검색범위 슬라이더
+    radius_html = """
+    <h4 style=text-align:center; >
+    탐색 반경을 설정해주세요<span style="font-size: 20px;">  (단위:m)</span></h4>
+
+    """
+    st.markdown(radius_html, unsafe_allow_html=True)
+    
+    radius = st.slider("radius_slider",min_value=1500,max_value=30000,value=10000,label_visibility="hidden")
+    st.markdown("---")
+
+    # 데이터 불러오기
+    all_data = pd.read_csv("all_data.csv")
+    all_data = getNearRestaurant(all_data,curr_location['latitude'], curr_location['longitude'],radius)
+
+    # 내 주변 맛집 주요키워드 출력
+    keyword_list = []
+    for idx in range(len(all_data['comment'])):
+        for vector in literal_eval(all_data['comment'].iloc[idx])[:2]:
+            if vector not in keyword_list:
+                keyword_list.insert(0,vector)
+            
+    keyword_list_length = len(keyword_list)
+    keyword_list = sorted(list(set(keyword_list)))
+
+
+    
+    main_keywords_html = """
+    <h4 style=text-align:center; >
+    주변 맛집 주요 키워드
+    </h4>
+    """
+    st.markdown(main_keywords_html, unsafe_allow_html=True)
+
+
+    selected_list = st.session_state["selected_list"]
+    selected_restraunt = st.session_state["selected_restraunt"]
+
+    st.markdown("---")
+    col1,col2,col3,col4 =st.columns(4)
+    for idx, keyword in enumerate(keyword_list):
+        keyword = "  "+keyword+"  "
         if idx%4 == 0:
-            if col1_add.button(button_keyword):
-                selected_list.append(keyword)
-                selected_list = list(set(selected_list))
+            if col1.button(f'{keyword}'):
+                if keyword not in selected_list:    
+                    selected_list.insert(0,keyword)
         elif idx%4 == 1:
-            if col2_add.button(button_keyword):
-                selected_list.append(keyword)
-                selected_list = list(set(selected_list))
+            if col2.button(f'{keyword}'):
+                if keyword not in selected_list:  
+                    selected_list.insert(0,keyword)
         elif idx%4 == 2:
-            if col3_add.button(button_keyword):
-                selected_list.append(keyword)
-                selected_list = list(set(selected_list))
+            if col3.button(f'{keyword}'):
+                if keyword not in selected_list:  
+                    selected_list.insert(0,keyword)
         elif idx%4 == 3:
-            if col4_add.button(button_keyword):
-                selected_list.append(keyword)
-                selected_list = list(set(selected_list))
-    name_insta = parse.quote(name)
-    name_etc = parse.quote(name+" 맛집")
+            if col4.button(f'{keyword}'):
+                if keyword not in selected_list:  
+                    selected_list.insert(0,keyword)
+
+
     
-    _,_,_,_,_,_,_,col_button1, col_button2, col_button3 =st.columns(10)
-    button1= f"""
-        <a type ='button' class="first"   href="https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=1&ie=utf8&query={name_etc}" target='_blank'>
-        <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTQb93sjSI5hrWVQzD3NoQ1fU3M3xQtWPKACw&usqp=CAU" style = "border-radius: 30%; overflow: hidden;  width: 100%; height:100%;"/>
-        </a>"""
-    
-    col_button1.markdown(button1,unsafe_allow_html=True)
-    
-    button2= f"""
-        <a type ='button' class="second"   href="https://www.instagram.com/explore/tags/{name_insta}/" target='_blank'>
-        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Instagram_logo_2022.svg/1200px-Instagram_logo_2022.svg.png" style = "border-radius: 30%; overflow: hidden; width: 100%; height:100%;"/>
-        </a>"""
-    
-    col_button2.markdown(button2,unsafe_allow_html=True)
-    
-    button3= f"""
-        <a type ='button' class="third"   href="https://www.youtube.com/results?search_query={name_etc}" target='_blank'>
-        <img src="https://w7.pngwing.com/pngs/447/350/png-transparent-iphone-youtube-computer-icons-logo-youtube-logo-electronics-sign-mobile-phones.png" style = "border-radius: 30%; overflow: hidden; width: 100%; height: 100%;" />
-        </a>"""
-    
-    col_button3.markdown(button3,unsafe_allow_html=True)
-            
-            
-            
-            
-            
-            
-            
-st.sidebar.header("내가 선택한 키워드")
-st.sidebar.multiselect("selected_list",
-                selected_list,
-                selected_list,label_visibility="hidden")
-st.sidebar.image("https://www.shutterstock.com/ko/blog/wp-content/uploads/sites/17/2018/02/101-Color-Combinations-STTK-Post-update12.jpg?w=760&h=537")
+
+
+    st.markdown("---")
+
+    title_html = """
+    <h1 style=text-align:center; >
+    내 주변 맛집
+    </h1>
+    """
+    st.markdown(title_html, unsafe_allow_html=True)
+
+
+
+    for id, idx in enumerate(range(len(all_data))):
         
+        st.markdown("<hr style=height: 3px;>", unsafe_allow_html=True)
+        name = all_data['name'].iloc[idx]
+        road_address = all_data['road_address'].iloc[idx]
+        distance = all_data['distance'].iloc[idx]
+        img = all_data['img_url'].iloc[idx]
+        comment = all_data['comment'].iloc[idx]
+        cola, colb = st.columns(2)   
+        
+        # 가게명 html
+        name_html = f"""
+        <h2 style=text-align:center;  >
+        {name}
+        </h2>
+        """
+        # 주소 html
+        road_address_html = f"""
+        <h6 style=text-align:center;  >
+        {road_address}
+        </h6>
+        """
+        # 거리를 텍스트로 변환
+        distance_text = distance_to_text(distance)
+        distance_text_html = f"""
+        <h1 style=text-align:center;  >
+        {distance_text}
+        </h1>
+        """
+        
+        cola.markdown(name_html, unsafe_allow_html=True)
+        cola.markdown(road_address_html, unsafe_allow_html=True)
+        colb.markdown(distance_text_html, unsafe_allow_html=True)
+
+        st.image(img)
+        col1_add,col2_add,col3_add,col4_add =st.columns(4)
+        for idx,keyword in enumerate(literal_eval(comment)[:4]):
+            # 버튼 고유값 생성(중복시 오류)
+            button_keyword = "  "+keyword+"  "+" "*(id+1)
+
+            if idx%4 == 0:
+                if col1_add.button(button_keyword):
+                    if keyword not in selected_list:
+                        selected_list.insert(0,keyword)
+            elif idx%4 == 1:
+                if col2_add.button(button_keyword):
+                    if keyword not in selected_list:
+                        selected_list.insert(0,keyword)
+            elif idx%4 == 2:
+                if col3_add.button(button_keyword):
+                    if keyword not in selected_list:
+                        selected_list.insert(0,keyword)             
+            elif idx%4 == 3:
+                if col4_add.button(button_keyword):
+                    if keyword not in selected_list:
+                       selected_list.insert(0,keyword)          
+                    
+        st.markdown("---")
+        name_insta = parse.quote(name)
+        name_etc = parse.quote(name+" 맛집")
+        
+        detail, col_button1, col_button2, col_button3, button_all =st.columns([0.2,0.1,0.1,0.1,0.5])
+        
+        detail_text= """
+                    <h5 style="text-align:right;" >
+                    링크 바로가기
+                    </h5>
+                    """
+        
+        detail.markdown(detail_text,unsafe_allow_html=True)        
+        
+        button1= f"""
+            <a type ='button' class="first"   href="https://search.naver.com/search.naver?where=nexearch&sm=top_hty&fbm=1&ie=utf8&query={name_etc}" target='_blank'>
+            <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTQb93sjSI5hrWVQzD3NoQ1fU3M3xQtWPKACw&usqp=CAU" style = "border-radius: 30%; overflow: hidden;  width: 100%; height:100%;"/>
+            </a>"""
+        
+        col_button1.markdown(button1,unsafe_allow_html=True)
+        
+        button2= f"""
+            <a type ='button' class="second"   href="https://www.instagram.com/explore/tags/{name_insta}/" target='_blank'>
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Instagram_logo_2022.svg/1200px-Instagram_logo_2022.svg.png" style = "border-radius: 30%; overflow: hidden; width: 100%; height:100%;"/>
+            </a>"""
+        
+        col_button2.markdown(button2,unsafe_allow_html=True)
+        
+        button3= f"""
+            <a type ='button' class="third"   href="https://www.youtube.com/results?search_query={name_etc}" target='_blank'>
+            <img src="https://w7.pngwing.com/pngs/447/350/png-transparent-iphone-youtube-computer-icons-logo-youtube-logo-electronics-sign-mobile-phones.png" style = "border-radius: 30%; overflow: hidden; width: 100%; height: 100%;" />
+            </a>"""
+        
+        col_button3.markdown(button3,unsafe_allow_html=True)
+        
+        if button_all.button(name+"과/와 비슷한 맛집 찾기!"):
+            for keyword_vector in random.sample(literal_eval(comment)[:10],5):
+                if keyword_vector not in selected_list:
+                    selected_list.insert(0,keyword_vector)
+
+            selected_restraunt.insert(0,[name,img,road_address])
+            # 중복 확인
+            selected_restraunt = list(set([str(ls) for ls in selected_restraunt]))
+            # str을 다시 list로
+            selected_restraunt = [literal_eval(i) for i in selected_restraunt]
+            
+
+    st.sidebar.header("내가 선택한 키워드")
+    st.sidebar.text("최대 10개까지만 저장됩니다.")
+    st.sidebar.multiselect("selected_list",
+                            selected_list,
+                            selected_list,label_visibility="hidden")
+
+    st.sidebar.header("내가 선택한 식당")
+    # selected_list session 불러오기
+    selected_list = st.session_state['selected_list'][:10]
+    st.session_state['selected_list'] = selected_list
+    # selected_restraunt session 불러오기
+    selected_restraunt = st.session_state['selected_restraunt'][:3]
+    st.session_state['selected_restraunt'] = selected_restraunt
+    
+    for restraunt in selected_restraunt:
+        name_side_value = restraunt[0]
+        img_side_value = restraunt[1]
+        road_address_side_value = restraunt[2]
+        
+        # 컨테이너 초기화
+        selected_restraunt_side = st.empty()
+        
+        with selected_restraunt_side.container():
+            name_side =st.sidebar.subheader(name_side_value)
+            road_address_side = st.sidebar.text(road_address_side_value)
+            img_side = st.sidebar.image(img_side_value)
+            
+        if st.sidebar.button(f"{name_side_value}_삭제",key=f"{name_side_value}_삭제"):
+            selected_restraunt_side.empty()
+        
+
+            
