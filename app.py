@@ -131,7 +131,7 @@ if 'selected_list' not in st.session_state:
 if 'selected_restraunt' not in st.session_state:
     st.session_state['selected_restraunt'] = []
 # 위치 값 가져오기
-# curr_location = getLocation()
+curr_location = getLocation()
 
 # selected_list session 불러오기
 
@@ -164,8 +164,8 @@ with st.container():
     # 데이터 불러오기
     all_data = pd.read_csv("all_data.csv")
     print(st.session_state['selected_list'])
-    # all_data = getRestaurant(all_data,curr_location['latitude'], curr_location['longitude'], radius, st.session_state['selected_list'])
-    all_data = getRestaurant(all_data,37.541, 126.986, radius, st.session_state['selected_list'])
+    all_data = getRestaurant(all_data,curr_location['latitude'], curr_location['longitude'], radius, st.session_state['selected_list'])
+    # all_data = getRestaurant(all_data,37.541, 126.986, radius, st.session_state['selected_list'])
 
     # 내 주변 맛집 주요키워드 출력
     keyword_list = []
