@@ -4,11 +4,13 @@ import pickle
 import re
 from tqdm import tqdm
 from ast import literal_eval
-from main import getLocation, getNearRestaurant
+from main import getLocation, getRestaurant
 from streamlit.components.v1 import html
 from urllib import parse
 from streamlit_javascript import st_javascript
 import random
+
+
 
 #TODO streamlit viewport 문제 mobile responsive
 
@@ -21,12 +23,12 @@ st.set_page_config(
     layout="centered"
   )
 
+
+
 # 주변거리 함수
 def distance_to_text(distance):
-    if distance<500:
-        distance_text = "500M 이내"
-    elif distance<1500:
-        distance_text = "1.5KM 이내"
+    if distance<1000:
+        distance_text = "1KM 이내"
     elif distance<3000:
         distance_text = "3KM 이내"
     elif distance<5000:
@@ -129,11 +131,10 @@ if 'selected_list' not in st.session_state:
 if 'selected_restraunt' not in st.session_state:
     st.session_state['selected_restraunt'] = []
 # 위치 값 가져오기
-curr_location = getLocation()
+# curr_location = getLocation()
 
 # selected_list session 불러오기
-selected_list = st.session_state['selected_list'][:10]
-st.session_state['selected_list'] = selected_list
+
 # selected_restraunt session 불러오기
 selected_restraunt = st.session_state['selected_restraunt'][:3]
 st.session_state['selected_restraunt'] = selected_restraunt
@@ -162,7 +163,9 @@ with st.container():
 
     # 데이터 불러오기
     all_data = pd.read_csv("all_data.csv")
-    all_data = getNearRestaurant(all_data,curr_location['latitude'], curr_location['longitude'],radius)
+    print(st.session_state['selected_list'])
+    # all_data = getRestaurant(all_data,curr_location['latitude'], curr_location['longitude'], radius, st.session_state['selected_list'])
+    all_data = getRestaurant(all_data,37.541, 126.986, radius, st.session_state['selected_list'])
 
     # 내 주변 맛집 주요키워드 출력
     keyword_list = []
@@ -184,7 +187,6 @@ with st.container():
     st.markdown(main_keywords_html, unsafe_allow_html=True)
 
 
-    selected_list = st.session_state["selected_list"]
     selected_restraunt = st.session_state["selected_restraunt"]
 
     st.markdown("---")
@@ -193,20 +195,20 @@ with st.container():
         keyword = "  "+keyword+"  "
         if idx%4 == 0:
             if col1.button(f'{keyword}'):
-                if keyword not in selected_list:    
-                    selected_list.insert(0,keyword)
+                if keyword not in st.session_state['selected_list']:    
+                    st.session_state['selected_list'].insert(0,keyword)
         elif idx%4 == 1:
             if col2.button(f'{keyword}'):
-                if keyword not in selected_list:  
-                    selected_list.insert(0,keyword)
+                if keyword not in st.session_state['selected_list']:  
+                    st.session_state['selected_list'].insert(0,keyword)
         elif idx%4 == 2:
             if col3.button(f'{keyword}'):
-                if keyword not in selected_list:  
-                    selected_list.insert(0,keyword)
+                if keyword not in st.session_state['selected_list']:  
+                    st.session_state['selected_list'].insert(0,keyword)
         elif idx%4 == 3:
             if col4.button(f'{keyword}'):
-                if keyword not in selected_list:  
-                    selected_list.insert(0,keyword)
+                if keyword not in st.session_state['selected_list']:  
+                    st.session_state['selected_list'].insert(0,keyword)
 
 
     
@@ -265,20 +267,20 @@ with st.container():
 
             if idx%4 == 0:
                 if col1_add.button(button_keyword):
-                    if keyword not in selected_list:
-                        selected_list.insert(0,keyword)
+                    if keyword not in st.session_state['selected_list']:
+                        st.session_state['selected_list'].insert(0,keyword)
             elif idx%4 == 1:
                 if col2_add.button(button_keyword):
-                    if keyword not in selected_list:
-                        selected_list.insert(0,keyword)
+                    if keyword not in st.session_state['selected_list']:
+                        st.session_state['selected_list'].insert(0,keyword)
             elif idx%4 == 2:
                 if col3_add.button(button_keyword):
-                    if keyword not in selected_list:
-                        selected_list.insert(0,keyword)             
+                    if keyword not in st.session_state['selected_list']:
+                        st.session_state['selected_list'].insert(0,keyword)             
             elif idx%4 == 3:
                 if col4_add.button(button_keyword):
-                    if keyword not in selected_list:
-                       selected_list.insert(0,keyword)          
+                    if keyword not in st.session_state['selected_list']:
+                       st.session_state['selected_list'].insert(0,keyword)          
                     
         st.markdown("---")
         name_insta = parse.quote(name)
@@ -317,8 +319,8 @@ with st.container():
         
         if button_all.button(name+"과/와 비슷한 맛집 찾기!"):
             for keyword_vector in random.sample(literal_eval(comment)[:10],5):
-                if keyword_vector not in selected_list:
-                    selected_list.insert(0,keyword_vector)
+                if keyword_vector not in st.session_state['selected_list']:
+                    st.session_state['selected_list'].insert(0,keyword_vector)
 
             selected_restraunt.insert(0,[name,img,road_address])
             # 중복 확인
@@ -330,13 +332,11 @@ with st.container():
     st.sidebar.header("내가 선택한 키워드")
     st.sidebar.text("최대 10개까지만 저장됩니다.")
     st.sidebar.multiselect("selected_list",
-                            selected_list,
-                            selected_list,label_visibility="hidden")
+                            st.session_state['selected_list'],
+                            st.session_state['selected_list'],label_visibility="hidden")
 
     st.sidebar.header("내가 선택한 식당")
-    # selected_list session 불러오기
-    selected_list = st.session_state['selected_list'][:10]
-    st.session_state['selected_list'] = selected_list
+    st.sidebar.text("최대 3개까지만 저장됩니다.")
     # selected_restraunt session 불러오기
     selected_restraunt = st.session_state['selected_restraunt'][:3]
     st.session_state['selected_restraunt'] = selected_restraunt
